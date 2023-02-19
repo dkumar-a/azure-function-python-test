@@ -1,0 +1,36 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.9'
+    displayName: 'Use Python Version 3.9'
+    continueOnError: False
+
+  - script: |
+      python -m venv .venv
+      source .venv/bin/activate
+      python -m pip install --upgrade pip
+      pip install setup
+      pip install --target="./.python_packages/lib/site-packages" -r ./requirements.txt 
+    workingDirectory: $(projectRoot)
+    displayName: "Install Requirements"
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: '$(Build.SourcesDirectory)'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/Application$(Build.BuildId).zip'
+      replaceExistingArchive: true
+  - publish: $(Build.ArtifactStagingDirectory)/Application$(Build.BuildId).zip
+    displayName: 'Upload package'
+    artifact: drop
