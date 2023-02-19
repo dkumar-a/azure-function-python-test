@@ -33,6 +33,9 @@ stages:
       displayName: 'Use Python Version 3.9'
       continueOnError: False
 
+    - bash: |
+        ls -la
+
     - script: |
         ls -la
         python -m venv .venv
