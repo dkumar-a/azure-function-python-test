@@ -16,7 +16,7 @@ variables:
   functionAppName: 'first_azure_function_python'
 
   # Working Directory
-  workingDirectory: 'first_azure_function_python'
+  workingDirectory: './'
 
 stages:
 - stage: Build
