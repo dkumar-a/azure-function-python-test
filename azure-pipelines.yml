@@ -9,28 +9,71 @@
 pool:
   vmImage: ubuntu-latest
 
-steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.9'
-    displayName: 'Use Python Version 3.9'
-    continueOnError: False
+variables:
+  # Azure Resource Manager connection created during pipeline creation
+  azureSubscription: '75151ced-1e9a-43d9-bc81-d2742ad28898'
 
-  - script: |
-      python -m venv .venv
-      source .venv/bin/activate
-      python -m pip install --upgrade pip
-      pip install setup
-      pip install --target="./.python_packages/lib/site-packages" -r ./requirements.txt 
-    workingDirectory: './'
-    displayName: "Install Requirements"
-  - task: ArchiveFiles@2
-    inputs:
-      rootFolderOrFile: '$(Build.SourcesDirectory)'
-      includeRootFolder: false
-      archiveType: 'zip'
-      archiveFile: '$(Build.ArtifactStagingDirectory)/Application$(Build.BuildId).zip'
-      replaceExistingArchive: true
-  - publish: $(Build.ArtifactStagingDirectory)/Application$(Build.BuildId).zip
-    displayName: 'Upload package'
-    artifact: drop
+  # Function app name
+  functionAppName: 'first_azure_function_python'
+
+  # Working Directory
+  workingDirectory: 'first_azure_function_python'
+
+stages:
+- stage: Build
+  displayName: Build stage
+
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.9'
+      displayName: 'Use Python Version 3.9'
+      continueOnError: False
+
+    - script: |
+        python -m venv .venv
+        source .venv/bin/activate
+        python -m pip install --upgrade pip
+        pip install setup
+        pip install --target="./.python_packages/lib/site-packages" -r ./requirements.txt 
+      workingDirectory: '$(workingDirectory)'
+      displayName: "Install Requirements"
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: '$(Build.SourcesDirectory)'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/Application$(Build.BuildId).zip'
+        replaceExistingArchive: true
+    - publish: $(Build.ArtifactStagingDirectory)/Application$(Build.BuildId).zip
+      displayName: 'Upload package'
+      artifact: drop
+
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+  condition: succeeded()
+
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy
+    environment: 'development'
+
+    strategy:
+      runOnce:
+        deploy:
+
+          steps:
+          - task: AzureFunctionApp@1
+            displayName: 'Azure functions app deploy'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: functionAppLinux
+              appName: First-Azure-Function-App-test
+              package: '$(Pipeline.Workspace)/drop/Application$(Build.BuildId).zip'
